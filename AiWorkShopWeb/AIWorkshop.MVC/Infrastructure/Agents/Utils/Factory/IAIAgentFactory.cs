@@ -1,8 +1,8 @@
-﻿using AIWorkshop.MVC.Infrastructure.Utils.Enums;
+﻿using AIWorkshop.MVC.Infrastructure.Agents.Utils.Enums;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
 
-namespace AIWorkshop.MVC.Infrastructure.Utils.Factories.Interfaces
+namespace AIWorkshop.MVC.Infrastructure.Agents.Utils.Factory
 {
     public interface IAIAgentFactory
     {

@@ -1,4 +1,4 @@
-﻿namespace AIWorkshop.MVC.Infrastructure.Utils
+﻿namespace AIWorkshop.MVC.Infrastructure.Agents.Utils.Models
 {
     public static class OpenAIModels
     {

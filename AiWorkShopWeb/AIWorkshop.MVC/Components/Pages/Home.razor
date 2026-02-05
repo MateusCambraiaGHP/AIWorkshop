@@ -1,7 +1,8 @@
 ﻿@page "/"
-@using AIWorkshop.MVC.Application.Services.Interfaces
+@using AIWorkshop.MVC.Data.Repositories
 @using AIWorkshop.MVC.Data.Entities
-@inject IUserService UserService
+@inject IUserRepository UserRepository
+@inject IDialogService DialogService
 
 <PageTitle>AI Workshop - Leaderboard</PageTitle>
 
@@ -11,13 +12,21 @@
 }
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+  @if (_currentUser is not null)
+  {
+    <MudAlert Severity="Severity.Info" Class="mb-4" Variant="Variant.Outlined" Dense="true">
+      <MudText>👋 Welcome, <strong>@_currentUser.Username</strong>!</MudText>
+    </MudAlert>
+  }
+
+  <!
   <!-- Header -->
   <MudPaper Class="pa-6 mb-4" Style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
     <MudText Typo="Typo.h3" Color="Color.Surface" Align="Align.Center">
       🏆 AI Workshop Leaderboard
     </MudText>
     <MudText Typo="Typo.subtitle1" Color="Color.Surface" Align="Align.Center" Class="mt-2">
-      Top prompt engineers compete for prizes!
+      Combined scores: Quiz (25 pts) + Prompt Analysis (25 pts) = Total (50 pts)
     </MudText>
   </MudPaper>
 
@@ -33,8 +42,8 @@
     <MudItem xs="12" sm="4">
       <MudPaper Class="pa-4 text-center" Elevation="2">
         <MudIcon Icon="@Icons.Material.Filled.EmojiEvents" Size="Size.Large" Color="Color.Warning" />
-        <MudText Typo="Typo.h4" Class="mt-2">@(_topScore > 0 ? $"{_topScore}/25" : "-")</MudText>
-        <MudText Typo="Typo.body2" Color="Color.Secondary">Highest Score</MudText>
+        <MudText Typo="Typo.h4" Class="mt-2">@(_topScore > 0 ? $"{_topScore}/50" : "-")</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">Highest Total Score</MudText>
       </MudPaper>
     </MudItem>
     <MudItem xs="12" sm="4">
@@ -61,11 +70,16 @@
               <MudText Typo="Typo.h2">@GetMedal(position)</MudText>
               <MudText Typo="Typo.h5" Class="mt-2">@entry.User.Username</MudText>
               <MudText Typo="Typo.h3" Color="@GetPositionColor(position)" Class="mt-2">
-                @entry.BestScore/25
+                @entry.TotalScore/50
               </MudText>
-              <MudChip T="string" Color="@GetPositionColor(position)" Size="Size.Small" Class="mt-2">
-                #@position Place
-              </MudChip>
+              <div class="d-flex justify-center gap-2 mt-2">
+                <MudChip T="string" Size="Size.Small" Color="Color.Info">
+                  Quiz: @entry.QuizScore
+                </MudChip>
+                <MudChip T="string" Size="Size.Small" Color="Color.Secondary">
+                  Prompt: @entry.PromptScore
+                </MudChip>
+              </div>
             </MudCardContent>
           </MudCard>
         </MudItem>
@@ -80,36 +94,45 @@
       <HeaderContent>
         <MudTh Style="width: 80px;">Rank</MudTh>
         <MudTh>Username</MudTh>
-        <MudTh Style="width: 150px;">Score</MudTh>
+        <MudTh Style="width: 100px;">Quiz</MudTh>
+        <MudTh Style="width: 100px;">Prompt</MudTh>
+        <MudTh Style="width: 120px;">Total</MudTh>
         <MudTh Style="width: 150px;">Progress</MudTh>
       </HeaderContent>
       <RowTemplate>
         <MudTd DataLabel="Rank">
-          <div class="d-flex align-center">
-            @if (GetRank(context) <= 3)
-            {
-              <MudText Typo="Typo.h6">@GetMedal(GetRank(context))</MudText>
-            }
-            else
-            {
-              <MudAvatar Size="Size.Small" Color="Color.Default">@GetRank(context)</MudAvatar>
-            }
-          </div>
+          @if (GetRank(context) <= 3)
+          {
+            <MudText Typo="Typo.h6">@GetMedal(GetRank(context))</MudText>
+          }
+          else
+          {
+            <MudAvatar Size="Size.Small" Color="Color.Default">@GetRank(context)</MudAvatar>
+          }
         </MudTd>
         <MudTd DataLabel="Username">
-          <MudText Typo="Typo.body1" Style="@(GetRank(context) <= 3 ? "font-weight: bold;" : "")">
+          <MudText Style="@(GetRank(context) <= 3 ? "font-weight: bold;" : "")">
             @context.User.Username
           </MudText>
         </MudTd>
-        <MudTd DataLabel="Score">
-          <MudChip T="string" Color="@GetScoreColor(context.BestScore)" Size="Size.Small">
-            @context.BestScore / 25
+        <MudTd DataLabel="Quiz">
+          <MudChip T="string" Size="Size.Small" Color="@GetScoreColor(context.QuizScore)">
+            @context.QuizScore/25
+          </MudChip>
+        </MudTd>
+        <MudTd DataLabel="Prompt">
+          <MudChip T="string" Size="Size.Small" Color="@GetScoreColor(context.PromptScore)">
+            @context.PromptScore/25
+          </MudChip>
+        </MudTd>
+        <MudTd DataLabel="Total">
+          <MudChip T="string" Size="Size.Small" Color="@GetTotalScoreColor(context.TotalScore)">
+            <strong>@context.TotalScore/50</strong>
           </MudChip>
         </MudTd>
         <MudTd DataLabel="Progress">
-          <MudProgressLinear Color="@GetScoreColor(context.BestScore)"
-                             Value="@(context.BestScore * 4)"
-                             Class="my-2"
+          <MudProgressLinear Color="@GetTotalScoreColor(context.TotalScore)"
+                             Value="@(context.TotalScore * 2)"
                              Rounded="true" />
         </MudTd>
       </RowTemplate>
@@ -117,26 +140,42 @@
         <MudText Align="Align.Center" Class="pa-4">
           <MudIcon Icon="@Icons.Material.Filled.HourglassEmpty" Size="Size.Large" Color="Color.Secondary" />
           <br />
-          No participants yet. Be the first to submit!
+          No participants yet. Be the first!
         </MudText>
       </NoRecordsContent>
     </MudTable>
   </MudPaper>
 
   <!-- Call to Action -->
-  <MudPaper Class="pa-4 mt-4 text-center" Elevation="2">
-    <MudText Typo="Typo.h6">Ready to compete?</MudText>
-    <MudButton Variant="Variant.Filled"
-               Color="Color.Primary"
-               Size="Size.Large"
-               StartIcon="@Icons.Material.Filled.PlayArrow"
-               Href="/prompt-analysis"
-               Class="mt-2">
-      Start Prompt Analysis
-    </MudButton>
-  </MudPaper>
+  <MudGrid Class="mt-4">
+    <MudItem xs="12" sm="6">
+      <MudPaper Class="pa-4 text-center" Elevation="2" Style="height: 100%;">
+        <MudIcon Icon="@Icons.Material.Filled.Quiz" Size="Size.Large" Color="Color.Primary" />
+        <MudText Typo="Typo.h6" Class="mt-2">Take the Quiz</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">Test your AI knowledge</MudText>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   Href="/quiz"
+                   Class="mt-3">
+          Start Quiz
+        </MudButton>
+      </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="6">
+      <MudPaper Class="pa-4 text-center" Elevation="2" Style="height: 100%;">
+        <MudIcon Icon="@Icons.Material.Filled.Edit" Size="Size.Large" Color="Color.Secondary" />
+        <MudText Typo="Typo.h6" Class="mt-2">Prompt Analysis</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">Write the best prompt</MudText>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Secondary"
+                   Href="/prompt-analysis"
+                   Class="mt-3">
+          Start Analysis
+        </MudButton>
+      </MudPaper>
+    </MudItem>
+  </MudGrid>
 
-  <!-- Auto-refresh info -->
   <MudText Typo="Typo.caption" Color="Color.Secondary" Align="Align.Center" Class="mt-4">
     <MudIcon Icon="@Icons.Material.Filled.Refresh" Size="Size.Small" />
     Leaderboard refreshes every 30 seconds
@@ -144,45 +183,89 @@
 </MudContainer>
 
 @code {
-  private List<(User User, int BestScore)> _leaderboard = [];
+  private List<LeaderboardEntry> _leaderboard = [];
   private bool _isLoading = true;
+  private bool _initialized;
   private int _totalParticipants;
   private int _topScore;
   private double _averageScore;
   private System.Timers.Timer? _refreshTimer;
+  private User? _currentUser;
 
-  protected override async Task OnInitializedAsync()
+  protected override async Task OnAfterRenderAsync(bool firstRender)
   {
-    await LoadLeaderboardAsync();
-    StartAutoRefresh();
+    if (firstRender && !_initialized)
+    {
+      await InitializeAsync();
+    }
   }
 
-  private async Task LoadLeaderboardAsync()
+  private async Task InitializeAsync()
   {
+    if (_initialized) return;
+
     _isLoading = true;
+    StateHasChanged();
 
     try
     {
-      _leaderboard = await UserService.GetLeaderboardAsync(100); // Get all
-      _totalParticipants = _leaderboard.Count;
-      _topScore = _leaderboard.FirstOrDefault().BestScore;
-      _averageScore = _leaderboard.Count > 0
-        ? _leaderboard.Average(x => x.BestScore)
-        : 0;
-    }
-    catch
-    {
-      // Silent fail for dashboard
+      _currentUser = await UserRepository.GetCurrentUserAsync();
+
+      if (_currentUser is null)
+      {
+        await ShowLoginDialogAsync();
+      }
+
+      await LoadLeaderboardAsync();
+      StartAutoRefresh();
     }
     finally
     {
       _isLoading = false;
+      _initialized = true;
+      StateHasChanged();
+    }
+  }
+
+  private async Task ShowLoginDialogAsync()
+  {
+    var options = new DialogOptions
+    {
+      CloseOnEscapeKey = false,
+      CloseButton = false,
+      MaxWidth = MaxWidth.Small,
+      FullWidth = true
+    };
+
+    var dialog = await DialogService.ShowAsync<LoginDialog>("", options);
+    var result = await dialog.Result;
+
+    if (result is not null && !result.Canceled && result.Data is User user)
+    {
+      _currentUser = user;
+    }
+  }
+
+  private async Task LoadLeaderboardAsync()
+  {
+    try
+    {
+      _leaderboard = await UserRepository.GetCombinedLeaderboardAsync(100);
+      _totalParticipants = _leaderboard.Count;
+      _topScore = _leaderboard.FirstOrDefault()?.TotalScore ?? 0;
+      _averageScore = _leaderboard.Count > 0
+        ? _leaderboard.Average(x => x.TotalScore)
+        : 0;
+    }
+    catch
+    {
+      // Silent fail
     }
   }
 
   private void StartAutoRefresh()
   {
-    _refreshTimer = new System.Timers.Timer(30000); // 30 seconds
+    _refreshTimer = new System.Timers.Timer(30000);
     _refreshTimer.Elapsed += async (sender, e) =>
     {
       await LoadLeaderboardAsync();
@@ -191,7 +274,8 @@
     _refreshTimer.Start();
   }
 
-  private int GetRank((User User, int BestScore) entry) => _leaderboard.IndexOf(entry) + 1;
+  // Helper methods - these were missing!
+  private int GetRank(LeaderboardEntry entry) => _leaderboard.IndexOf(entry) + 1;
 
   private string GetMedal(int position) => position switch
   {
@@ -201,13 +285,7 @@
     _ => ""
   };
 
-  private string GetPodiumClass(int position) => position switch
-  {
-    1 => "mud-theme-primary",
-    2 => "",
-    3 => "",
-    _ => ""
-  };
+  private string GetPodiumClass(int position) => position == 1 ? "mud-theme-primary" : "";
 
   private Color GetPositionColor(int position) => position switch
   {
@@ -222,6 +300,14 @@
     >= 23 => Color.Success,
     >= 20 => Color.Info,
     >= 17 => Color.Warning,
+    _ => Color.Error
+  };
+
+  private Color GetTotalScoreColor(int score) => score switch
+  {
+    >= 45 => Color.Success,
+    >= 38 => Color.Info,
+    >= 30 => Color.Warning,
     _ => Color.Error
   };
 

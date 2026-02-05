@@ -1,27 +1,13 @@
-﻿using AIWorkshop.MVC.Infrastructure.Utils.Helpers.Interfaces;
-using System.Reflection;
+﻿using System.Reflection;
 using System.Runtime.CompilerServices;
 
-namespace AIWorkshop.MVC.Infrastructure.Utils.Helpers
+namespace AIWorkshop.MVC.Infrastructure.Agents.Utils.Helpers
 {
     public class PromptLoader : IPromptLoader
     {
-
         private const string RootNamespace = "AIWorkshop.MVC";
 
-        public string Load(string resourceName)
-        {
-            var assembly = Assembly.GetExecutingAssembly();
-            var fullResourceName = $"AIWorkshop.MVC.{resourceName.Replace("/", ".").Replace("\\", ".")}";
-
-            using var stream = assembly.GetManifestResourceStream(fullResourceName)
-                ?? throw new InvalidOperationException($"Prompt resource '{fullResourceName}' not found.");
-
-            using var reader = new StreamReader(stream);
-            return reader.ReadToEnd();
-        }
-
-        public string LoadRelative(string fileName, [CallerFilePath] string callerFilePath = "")
+        public string Load(string fileName, [CallerFilePath] string callerFilePath = "")
         {
             var callerDir = Path.GetDirectoryName(callerFilePath) ?? string.Empty;
             var promptPath = Path.Combine(callerDir, "Prompts", fileName);

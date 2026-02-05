@@ -18,7 +18,7 @@
   </ItemGroup>
 
 	<ItemGroup>
-		<EmbeddedResource Include="Infrastructure\Utils\Agents\**\Prompts\*.md" />
+		<EmbeddedResource Include="**\Prompts\*.md" />
 	</ItemGroup>
 	
 </Project>

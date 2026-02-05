@@ -1,10 +1,9 @@
-﻿using AIWorkshop.MVC.Infrastructure.Utils.Enums;
-using AIWorkshop.MVC.Infrastructure.Utils.Factories.Interfaces;
-using Microsoft.Agents.AI;
+﻿using AIWorkshop.MVC.Infrastructure.Agents.Utils.Enums;
+using AIWorkshop.MVC.Infrastructure.Agents.Utils.Factory;
 using Microsoft.Extensions.AI;
 using System.Text.Json;
 
-namespace AIWorkshop.MVC.Infrastructure.Utils.Agents;
+namespace AIWorkshop.MVC.Infrastructure.Agents;
 
 public abstract class AgentBase<T> : IAgentBase<T> where T : class, new()
 {

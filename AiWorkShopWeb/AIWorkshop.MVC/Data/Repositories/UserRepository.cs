@@ -1,18 +1,17 @@
-﻿using AIWorkshop.MVC.Application.Services.Interfaces;
-using AIWorkshop.MVC.Data;
+﻿using AIWorkshop.MVC.Data;
 using AIWorkshop.MVC.Data.Entities;
 using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
 using Microsoft.EntityFrameworkCore;
 
-namespace AIWorkshop.MVC.Application.Services
+namespace AIWorkshop.MVC.Data.Repositories
 {
-    public class UserService : IUserService
+    public class UserRepository : IUserRepository
     {
         private readonly AppDbContext _db;
         private readonly ProtectedSessionStorage _sessionStorage;
         private const string UserSessionKey = "CurrentUserId";
 
-        public UserService(
+        public UserRepository(
             AppDbContext db, 
             ProtectedSessionStorage sessionStorage)
         {
@@ -45,7 +44,7 @@ namespace AIWorkshop.MVC.Application.Services
 
         public async Task<User> LoginOrCreateAsync(string username, string? email = null)
         {
-            var user = await _db.Users.FirstOrDefaultAsync(u => u.Username == username);
+            var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == email);
 
             if (user is null)
             {
@@ -68,41 +67,34 @@ namespace AIWorkshop.MVC.Application.Services
             await _sessionStorage.DeleteAsync(UserSessionKey);
         }
 
-        public async Task SaveScoreAsync(
-            int userId, 
-            string prompt, 
-            int score, 
-            string rating,
-            string componentScores, 
-            List<string> recommendations, 
-            string improvedPrompt)
+        public async Task SaveScoreAsync(PromptScore promptScore)
         {
-            var promptScore = new PromptScore
-            {
-                UserId = userId,
-                Prompt = prompt,
-                Score = score,
-                Rating = rating,
-                ComponentScores = componentScores,
-                Recommendations = string.Join("|||", recommendations),
-                ImprovedPrompt = improvedPrompt
-            };
-
             _db.PromptScores.Add(promptScore);
             await _db.SaveChangesAsync();
         }
 
-        public async Task<List<(User User, int BestScore)>> GetLeaderboardAsync(int top = 3)
+        public async Task<List<LeaderboardEntry>> GetCombinedLeaderboardAsync(int top = 100)
         {
-            var leaderboard = await _db.PromptScores
-                .Include(p => p.User)
-                .GroupBy(p => p.User)
-                .Select(g => new { User = g.Key, BestScore = g.Max(p => p.Score) })
-                .OrderByDescending(x => x.BestScore)
-                .Take(top)
+            var users = await _db.Users
+                .Include(u => u.PromptScores)
+                .Include(u => u.QuizScores)
                 .ToListAsync();
 
-            return leaderboard.Select(x => (x.User, x.BestScore)).ToList();
+            var leaderboard = users
+                .Select(u => new LeaderboardEntry
+                {
+                    User = u,
+                    PromptScore = u.PromptScores.OrderByDescending(p => p.Score).FirstOrDefault()?.Score ?? 0,
+                    QuizScore = u.QuizScores.OrderByDescending(q => q.Score).FirstOrDefault()?.Score ?? 0,
+                    TotalScore = (u.PromptScores.OrderByDescending(p => p.Score).FirstOrDefault()?.Score ?? 0) +
+                                 (u.QuizScores.OrderByDescending(q => q.Score).FirstOrDefault()?.Score ?? 0)
+                })
+                .Where(e => e.TotalScore > 0)
+                .OrderByDescending(e => e.TotalScore)
+                .Take(top)
+                .ToList();
+
+            return leaderboard;
         }
     }
 }

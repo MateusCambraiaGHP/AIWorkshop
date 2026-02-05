@@ -1,7 +1,7 @@
 ﻿using AIWorkshop.MVC.Application.Handlers.Interfaces;
 using AIWorkshop.MVC.Application.Requests;
 using AIWorkshop.MVC.Application.Responses;
-using AIWorkshop.MVC.Infrastructure.Utils.Agents.PromptAnalysis.Interfaces;
+using AIWorkshop.MVC.Infrastructure.Agents.PromptAnalysis;
 using System.Text.Json;
 
 namespace AIWorkshop.MVC.Application.Handlers

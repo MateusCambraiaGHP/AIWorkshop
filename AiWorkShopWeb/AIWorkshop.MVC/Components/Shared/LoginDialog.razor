@@ -1,4 +1,4 @@
-﻿@inject IUserService UserService
+﻿@inject IUserRepository UserRepository
 @inject ISnackbar Snackbar
 
 @if (_isLoading)
@@ -67,7 +67,7 @@
 
     try
     {
-      var user = await UserService.LoginOrCreateAsync(_username.Trim(), _email?.Trim());
+      var user = await UserRepository.LoginOrCreateAsync(_username.Trim(), _email?.Trim());
       Snackbar.Add($"Welcome, {user.Username}! 🎉", Severity.Success);
       MudDialog.Close(DialogResult.Ok(user));
     }

@@ -2,13 +2,13 @@
 @using AIWorkshop.MVC.Application.Handlers.Interfaces
 @using AIWorkshop.MVC.Application.Requests
 @using AIWorkshop.MVC.Application.Responses
-@using AIWorkshop.MVC.Application.Services.Interfaces
+@using AIWorkshop.MVC.Data.Repositories
 @using AIWorkshop.MVC.Data.Entities
 @using System.Globalization
 @layout MainLayout
 @inject IPromptAnalysisHandler PromptHandler
-@inject IUserService UserService
-@inject IDialogService DialogService
+@inject IUserRepository UserService
+@inject NavigationManager Navigation
 
 
 <PageTitle>Prompt Analysis</PageTitle>
@@ -26,7 +26,7 @@
     <MudAlert Severity="Severity.Info" Class="mb-4" Variant="Variant.Outlined" Dense="true">
       <div class="d-flex align-center justify-space-between">
         <MudText>
-          👋 Welcome, <strong>@_currentUser.Username</strong>
+          👋 Welcome, <strong>@_currentUser.Email</strong>
           @if (_hasBeenSent)
           {
             <span> — You already submitted your prompt!</span>
@@ -206,7 +206,8 @@
 
     if (_currentUser is null)
     {
-      await ShowLoginDialogAsync();
+      Navigation.NavigateTo("/", forceLoad: false);
+      return;
     }
 
     if (_currentUser is not null)
@@ -227,31 +228,12 @@
     await InvokeAsync(StateHasChanged);
   }
 
-  private async Task ShowLoginDialogAsync()
-  {
-    var options = new DialogOptions
-    {
-      CloseOnEscapeKey = false,
-      CloseButton = false,
-      MaxWidth = MaxWidth.Small,
-      FullWidth = true
-    };
-
-    var dialog = await DialogService.ShowAsync<LoginDialog>("", options);
-    var result = await dialog.Result;
-
-    if (result is not null && !result.Canceled && result.Data is User user)
-    {
-      _currentUser = user;
-    }
-  }
-
   private async Task AnalyzePromptAsync()
   {
     if (_currentUser is null)
     {
-      await ShowLoginDialogAsync();
-      if (_currentUser is null) return;
+      Navigation.NavigateTo("/", forceLoad: false);
+      return;
     }
 
     if (_prompt.Length < 10)
@@ -273,15 +255,18 @@
       {
         ParseComponentScores(_response.ComponentScores);
 
-        // Save score to database with all details
-        await UserService.SaveScoreAsync(
-          _currentUser.Id,
-          _prompt,
-          _response.OverallScore,
-          _response.Rating,
-          _response.ComponentScores,
-          _response.Recommendations,
-          _response.ImprovedPrompt);
+        var promptScore = new PromptScore
+        {
+          UserId = _currentUser.Id,
+          Prompt = _prompt,
+          Score = _response.OverallScore,
+          Rating = _response.Rating,
+          ComponentScores = _response.ComponentScores,
+          Recommendations = string.Join("|||", _response.Recommendations),
+          ImprovedPrompt = _response.ImprovedPrompt
+        };
+
+        await UserService.SaveScoreAsync(promptScore);
 
         _hasBeenSent = true;
         Snackbar.Add($"Score saved! You got {_response.OverallScore}/25 🎯", Severity.Success);
@@ -373,4 +358,5 @@
       Snackbar.Add("Copied to clipboard!", Severity.Success);
     }
   }
+
 }

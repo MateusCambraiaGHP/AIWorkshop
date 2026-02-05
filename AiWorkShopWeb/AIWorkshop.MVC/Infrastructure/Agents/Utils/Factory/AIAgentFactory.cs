@@ -1,6 +1,6 @@
-﻿using AIWorkshop.MVC.Infrastructure.Utils.Enums;
-using AIWorkshop.MVC.Infrastructure.Utils.Factories.Interfaces;
-using AIWorkshop.MVC.Infrastructure.Utils.Models;
+﻿using AIWorkshop.MVC.Infrastructure.Agents.Utils.Enums;
+using AIWorkshop.MVC.Infrastructure.Agents.Utils.Factory;
+using AIWorkshop.MVC.Infrastructure.Agents.Utils.Models;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Options;
@@ -8,7 +8,7 @@ using OpenAI;
 using OpenAI.Chat;
 using System.ClientModel;
 
-namespace AIWorkshop.MVC.Infrastructure.Utils.Factories
+namespace AIWorkshop.MVC.Infrastructure.Agents.Utils.Factories
 {
     public class AIAgentFactory : IAIAgentFactory
     {

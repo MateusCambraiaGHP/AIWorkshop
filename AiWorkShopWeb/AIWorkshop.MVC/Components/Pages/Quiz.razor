@@ -1,0 +1,412 @@
+@page "/quiz"
+@using AIWorkshop.MVC.Data.Repositories
+@using AIWorkshop.MVC.Data.Entities
+@layout MainLayout
+@inject IQuizRepository QuizRepository
+@inject IUserRepository UserRepository
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<PageTitle>AI Knowledge Quiz</PageTitle>
+
+@if (_isLoading)
+{
+  <MudOverlay Visible="true" DarkBackground="true" ZIndex="9999">
+    <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="true" />
+  </MudOverlay>
+}
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
+  @if (_initialized && _currentUser is not null)
+  {
+    <MudAlert Severity="Severity.Info" Class="mb-4" Variant="Variant.Outlined" Dense="true">
+      <MudText>
+        👋 Welcome, <strong>@_currentUser.Username</strong>
+        @if (_hasSubmitted)
+        {
+          <span> — You already completed the quiz!</span>
+        }
+      </MudText>
+    </MudAlert>
+  }
+
+  <!-- Header -->
+  <MudPaper Class="pa-6 mb-4" Style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
+    <MudText Typo="Typo.h4" Color="Color.Surface" Align="Align.Center">
+      🧠 AI Knowledge Quiz
+    </MudText>
+    <MudText Typo="Typo.subtitle1" Color="Color.Surface" Align="Align.Center" Class="mt-2">
+      Test your knowledge about AI and Prompt Engineering!
+    </MudText>
+  </MudPaper>
+
+  @if (_initialized && !_hasSubmitted && _result is null && _questions.Count > 0)
+  {
+    <!-- Progress -->
+    <MudPaper Class="pa-3 mb-4" Elevation="2">
+      <div class="d-flex justify-space-between align-center mb-2">
+        <MudText Typo="Typo.body2">
+          Question @(_currentQuestionIndex + 1) of @_questions.Count
+        </MudText>
+        <MudText Typo="Typo.body2">
+          @_answers.Count(a => a.SelectedOptionIndex >= 0) answered
+        </MudText>
+      </div>
+      <MudProgressLinear Value="@((_currentQuestionIndex + 1) * 100.0 / _questions.Count)"
+                         Color="Color.Primary"
+                         Rounded="true" />
+    </MudPaper>
+
+    <!-- Question Card -->
+    @if (_currentQuestionIndex < _questions.Count)
+    {
+      var question = _questions[_currentQuestionIndex];
+      var currentAnswer = _answers.FirstOrDefault(a => a.QuestionId == question.Id);
+
+      <MudCard Elevation="3" Class="mb-4">
+        <MudCardContent>
+          <MudText Typo="Typo.h6" Class="mb-4">
+            <MudIcon Icon="@Icons.Material.Filled.QuestionMark" Class="mr-2" />
+            @question.Question
+          </MudText>
+
+          <div class="d-flex flex-column gap-2">
+            @for (int i = 0; i < question.Options.Count; i++)
+            {
+              var optionIndex = i;
+              var isSelected = currentAnswer?.SelectedOptionIndex == optionIndex;
+
+              <MudPaper Class="pa-3"
+                        Elevation="@(isSelected ? 3 : 1)"
+                        Style="@(isSelected ? "border: 2px solid var(--mud-palette-primary); cursor: pointer;" : "cursor: pointer;")"
+                        @onclick="() => SelectOption(optionIndex)">
+                <div class="d-flex align-center gap-2">
+                  <MudIcon Icon="@(isSelected? Icons.Material.Filled.RadioButtonChecked : Icons.Material.Filled.RadioButtonUnchecked)"
+                           Color="@(isSelected ? Color.Primary : Color.Default)" />
+                  <MudText>@question.Options[optionIndex]</MudText>
+                </div>
+              </MudPaper>
+            }
+          </div>
+        </MudCardContent>
+      </MudCard>
+
+      <!-- Navigation -->
+      <div class="d-flex justify-space-between gap-2">
+        <MudButton Variant="Variant.Outlined"
+                   Color="Color.Default"
+                   StartIcon="@Icons.Material.Filled.ArrowBack"
+                   Disabled="@(_currentQuestionIndex == 0)"
+                   OnClick="PreviousQuestion">
+          Previous
+        </MudButton>
+
+        @if (_currentQuestionIndex < _questions.Count - 1)
+        {
+          <MudButton Variant="Variant.Filled"
+                     Color="Color.Primary"
+                     EndIcon="@Icons.Material.Filled.ArrowForward"
+                     OnClick="NextQuestion">
+            Next
+          </MudButton>
+        }
+        else
+        {
+          <MudButton Variant="Variant.Filled"
+                     Color="Color.Success"
+                     EndIcon="@Icons.Material.Filled.Check"
+                     Disabled="@(_answers.Count(a => a.SelectedOptionIndex >= 0) < _questions.Count)"
+                     OnClick="SubmitQuizAsync">
+            Submit Quiz
+          </MudButton>
+        }
+      </div>
+
+      <!-- Question Navigator -->
+      <MudPaper Class="pa-3 mt-4" Elevation="2">
+        <MudText Typo="Typo.body2" Class="mb-2">Jump to question:</MudText>
+        <div class="d-flex flex-wrap gap-1">
+          @for (int i = 0; i < _questions.Count; i++)
+          {
+            var questionIndex = i;
+            var answer = _answers.FirstOrDefault(a => a.QuestionId == _questions[questionIndex].Id);
+            var isAnswered = answer?.SelectedOptionIndex >= 0;
+            var isCurrent = questionIndex == _currentQuestionIndex;
+
+            <MudButton Size="Size.Small"
+                       Variant="@(isCurrent ? Variant.Filled : Variant.Outlined)"
+                       Color="@(isAnswered ? Color.Success : Color.Default)"
+                       OnClick="() => GoToQuestion(questionIndex)"
+                       Style="min-width: 40px;">
+              @(questionIndex + 1)
+            </MudButton>
+          }
+        </div>
+      </MudPaper>
+    }
+  }
+  else if (_initialized && _result is not null)
+  {
+    <!-- Results -->
+    <MudPaper Class="pa-6 mb-4 text-center" Elevation="3">
+      <MudText Typo="Typo.h2">
+        @GetResultEmoji(_result.Score)
+      </MudText>
+      <MudText Typo="Typo.h3" Color="@GetScoreColor(_result.Score)" Class="mt-2">
+        @_result.Score / 25
+      </MudText>
+      <MudText Typo="Typo.h6" Class="mt-2">
+        @_result.CorrectAnswers out of @_result.TotalQuestions correct!
+      </MudText>
+      <MudChip T="string" Color="@GetScoreColor(_result.Score)" Size="Size.Large" Class="mt-3">
+        @GetRating(_result.Score)
+      </MudChip>
+    </MudPaper>
+
+    <!-- Detailed Results -->
+    <MudText Typo="Typo.h6" Class="mb-3">📋 Detailed Results</MudText>
+    @foreach (var detail in _result.Details)
+    {
+      var originalQuestion = _questions.FirstOrDefault(q => q.Id == detail.QuestionId);
+      <MudCard Class="mb-3" Elevation="2">
+        <MudCardContent>
+          <div class="d-flex align-start gap-3">
+            <MudIcon Icon="@(detail.IsCorrect? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Cancel)"
+                     Color="@(detail.IsCorrect ? Color.Success : Color.Error)"
+                     Size="Size.Large" />
+            <div class="flex-grow-1">
+              <MudText Typo="Typo.body1" Style="font-weight: 500;">
+                @detail.Question
+              </MudText>
+
+              @if (!detail.IsCorrect && detail.SelectedOptionIndex >= 0 && originalQuestion is not null)
+              {
+                <MudText Typo="Typo.body2" Color="Color.Error" Class="mt-1">
+                  Your answer: @originalQuestion.Options[detail.SelectedOptionIndex]
+                </MudText>
+              }
+
+              @if (originalQuestion is not null)
+              {
+                <MudText Typo="Typo.body2" Color="Color.Success" Class="mt-1">
+                  Correct: @originalQuestion.Options[detail.CorrectOptionIndex]
+                </MudText>
+              }
+
+              @if (!string.IsNullOrEmpty(detail.Explanation))
+              {
+                <MudAlert Severity="Severity.Info" Dense="true" Class="mt-2">
+                  @detail.Explanation
+                </MudAlert>
+              }
+            </div>
+          </div>
+        </MudCardContent>
+      </MudCard>
+    }
+
+    <!-- Call to Action -->
+    <MudPaper Class="pa-4 mt-4 text-center" Elevation="2">
+      <MudText Typo="Typo.body1">Complete the Prompt Analysis to boost your total score!</MudText>
+      <MudButton Variant="Variant.Filled"
+                 Color="Color.Primary"
+                 Size="Size.Large"
+                 StartIcon="@Icons.Material.Filled.Edit"
+                 Href="/prompt-analysis"
+                 Class="mt-3">
+        Go to Prompt Analysis
+      </MudButton>
+    </MudPaper>
+  }
+  else if (_initialized && _existingScore is not null)
+  {
+    <!-- Already Submitted View -->
+    <MudPaper Class="pa-6 mb-4 text-center" Elevation="3">
+      <MudText Typo="Typo.h2">
+        @GetResultEmoji(_existingScore.Score)
+      </MudText>
+      <MudText Typo="Typo.h3" Color="@GetScoreColor(_existingScore.Score)" Class="mt-2">
+        @_existingScore.Score / 25
+      </MudText>
+      <MudText Typo="Typo.h6" Class="mt-2">
+        @_existingScore.CorrectAnswers out of @_existingScore.TotalQuestions correct!
+      </MudText>
+      <MudChip T="string" Color="@GetScoreColor(_existingScore.Score)" Size="Size.Large" Class="mt-3">
+        @GetRating(_existingScore.Score)
+      </MudChip>
+      <MudText Typo="Typo.caption" Class="mt-3">
+        Submitted: @_existingScore.CreatedAt.ToString("g")
+      </MudText>
+    </MudPaper>
+
+    <MudPaper Class="pa-4 text-center" Elevation="2">
+      <MudButton Variant="Variant.Filled"
+                 Color="Color.Primary"
+                 StartIcon="@Icons.Material.Filled.Edit"
+                 Href="/prompt-analysis">
+        Go to Prompt Analysis
+      </MudButton>
+      <MudButton Variant="Variant.Outlined"
+                 Color="Color.Secondary"
+                 StartIcon="@Icons.Material.Filled.Leaderboard"
+                 Href="/"
+                 Class="ml-2">
+        View Leaderboard
+      </MudButton>
+    </MudPaper>
+  }
+</MudContainer>
+
+@code {
+  private User? _currentUser;
+  private List<QuizQuestion> _questions = [];
+  private List<QuizAnswer> _answers = [];
+  private int _currentQuestionIndex;
+  private bool _isLoading;
+  private bool _hasSubmitted;
+  private bool _initialized;
+  private QuizResult? _result;
+  private QuizScore? _existingScore;
+
+  protected override async Task OnAfterRenderAsync(bool firstRender)
+  {
+    if (firstRender && !_initialized)
+    {
+      await InitializeAsync();
+    }
+  }
+
+  private async Task InitializeAsync()
+  {
+    if (_initialized) return; // Guard against multiple calls
+
+    _isLoading = true;
+    StateHasChanged();
+
+    try
+    {
+      _currentUser = await UserRepository.GetCurrentUserAsync();
+
+      // Redirect to home if not logged in
+      if (_currentUser is null)
+      {
+        Navigation.NavigateTo("/", forceLoad: false);
+        return;
+      }
+
+      if (_currentUser is not null)
+      {
+        _existingScore = await QuizRepository.GetUserQuizScoreAsync(_currentUser.Id);
+        if (_existingScore is not null)
+        {
+          _hasSubmitted = true;
+        }
+        else
+        {
+          _questions = QuizRepository.GetQuestions();
+          _answers = _questions.Select(q => new QuizAnswer
+          {
+            QuestionId = q.Id,
+            SelectedOptionIndex = -1
+          }).ToList();
+        }
+      }
+    }
+    catch (Exception ex)
+    {
+      Snackbar.Add($"Error loading quiz: {ex.Message}", Severity.Error);
+    }
+    finally
+    {
+      _isLoading = false;
+      _initialized = true;
+      StateHasChanged();
+    }
+  }
+
+  private void SelectOption(int optionIndex)
+  {
+    if (_questions.Count == 0 || _currentQuestionIndex >= _questions.Count) return;
+
+    var answer = _answers.FirstOrDefault(a => a.QuestionId == _questions[_currentQuestionIndex].Id);
+    if (answer is not null)
+    {
+      answer.SelectedOptionIndex = optionIndex;
+      StateHasChanged();
+    }
+  }
+
+  private void NextQuestion()
+  {
+    if (_currentQuestionIndex < _questions.Count - 1)
+    {
+      _currentQuestionIndex++;
+    }
+  }
+
+  private void PreviousQuestion()
+  {
+    if (_currentQuestionIndex > 0)
+    {
+      _currentQuestionIndex--;
+    }
+  }
+
+  private void GoToQuestion(int index)
+  {
+    if (index >= 0 && index < _questions.Count)
+    {
+      _currentQuestionIndex = index;
+    }
+  }
+
+  private async Task SubmitQuizAsync()
+  {
+    if (_currentUser is null) return;
+
+    _isLoading = true;
+    StateHasChanged();
+
+    try
+    {
+      _result = await QuizRepository.SubmitQuizAsync(_currentUser.Id, _answers);
+      _hasSubmitted = true;
+      Snackbar.Add($"Quiz completed! You scored {_result.Score}/25 🎉", Severity.Success);
+    }
+    catch (Exception ex)
+    {
+      Snackbar.Add($"Error submitting quiz: {ex.Message}", Severity.Error);
+    }
+    finally
+    {
+      _isLoading = false;
+      StateHasChanged();
+    }
+  }
+
+  private string GetResultEmoji(int score) => score switch
+  {
+    >= 23 => "🏆",
+    >= 20 => "🌟",
+    >= 17 => "👍",
+    >= 13 => "📚",
+    _ => "💪"
+  };
+
+  private string GetRating(int score) => score switch
+  {
+    >= 23 => "Excellent!",
+    >= 20 => "Very Good!",
+    >= 17 => "Good!",
+    >= 13 => "Keep Learning!",
+    _ => "Room to Grow!"
+  };
+
+  private Color GetScoreColor(int score) => score switch
+  {
+    >= 23 => Color.Success,
+    >= 20 => Color.Info,
+    >= 17 => Color.Warning,
+    _ => Color.Error
+  };
+}

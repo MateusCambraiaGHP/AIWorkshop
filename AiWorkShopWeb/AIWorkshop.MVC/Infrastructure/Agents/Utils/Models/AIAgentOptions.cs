@@ -1,6 +1,6 @@
-﻿using AIWorkshop.MVC.Infrastructure.Utils.Enums;
+﻿using AIWorkshop.MVC.Infrastructure.Agents.Utils.Enums;
 
-namespace AIWorkshop.MVC.Infrastructure.Utils.Models
+namespace AIWorkshop.MVC.Infrastructure.Agents.Utils.Models
 {
     public class AIAgentOptions
     {

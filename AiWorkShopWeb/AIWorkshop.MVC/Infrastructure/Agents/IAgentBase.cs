@@ -1,7 +1,7 @@
-﻿using AIWorkshop.MVC.Infrastructure.Utils.Enums;
+﻿using AIWorkshop.MVC.Infrastructure.Agents.Utils.Enums;
 using Microsoft.Agents.AI;
 
-namespace AIWorkshop.MVC.Infrastructure.Utils.Agents
+namespace AIWorkshop.MVC.Infrastructure.Agents
 {
     public interface IAgentBase<T>
     {

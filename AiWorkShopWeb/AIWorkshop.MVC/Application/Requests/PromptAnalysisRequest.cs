@@ -1,4 +1,4 @@
-﻿using AIWorkshop.MVC.Infrastructure.Utils.Enums;
+﻿using AIWorkshop.MVC.Infrastructure.Agents.Utils.Enums;
 using System.ComponentModel.DataAnnotations;
 
 namespace AIWorkshop.MVC.Application.Requests

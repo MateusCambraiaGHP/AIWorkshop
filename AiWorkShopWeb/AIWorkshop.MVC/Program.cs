@@ -1,16 +1,13 @@
 using AIWorkshop.MVC.Application.Handlers;
 using AIWorkshop.MVC.Application.Handlers.Interfaces;
-using AIWorkshop.MVC.Application.Services;
-using AIWorkshop.MVC.Application.Services.Interfaces;
 using AIWorkshop.MVC.Components;
 using AIWorkshop.MVC.Data;
-using AIWorkshop.MVC.Infrastructure.Utils.Agents.PromptAnalysis;
-using AIWorkshop.MVC.Infrastructure.Utils.Agents.PromptAnalysis.Interfaces;
-using AIWorkshop.MVC.Infrastructure.Utils.Factories;
-using AIWorkshop.MVC.Infrastructure.Utils.Factories.Interfaces;
-using AIWorkshop.MVC.Infrastructure.Utils.Helpers;
-using AIWorkshop.MVC.Infrastructure.Utils.Helpers.Interfaces;
-using AIWorkshop.MVC.Infrastructure.Utils.Models;
+using AIWorkshop.MVC.Data.Repositories;
+using AIWorkshop.MVC.Infrastructure.Agents.PromptAnalysis;
+using AIWorkshop.MVC.Infrastructure.Agents.Utils.Factories;
+using AIWorkshop.MVC.Infrastructure.Agents.Utils.Factory;
+using AIWorkshop.MVC.Infrastructure.Agents.Utils.Helpers;
+using AIWorkshop.MVC.Infrastructure.Agents.Utils.Models;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
 using MudBlazor.Services;
@@ -70,7 +67,8 @@ builder.Services.AddTransient<IPromptAnalysisAgent, PromptAnalysisAgent>();
 
 // Services 
 builder.Services.AddScoped<IPromptAnalysisHandler, PromptAnalysisHandler>();
-builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IQuizRepository, QuizRepository>();
 
 builder.WebHost.ConfigureKestrel(options =>
 {

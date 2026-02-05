@@ -1,6 +1,4 @@
 <Solution>
   <Folder Name="/Solution Items/" />
-  <Project Path="AIWorkshop.API/AIWorkshop.API.csproj" />
-  <Project Path="AIWorkshop.Common/AIWorkshop.Common.csproj" />
   <Project Path="AIWorkshop.MVC/AIWorkshop.MVC.csproj" />
 </Solution>

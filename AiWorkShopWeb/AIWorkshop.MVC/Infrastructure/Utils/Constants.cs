@@ -1,4 +1,4 @@
-﻿namespace BlueBerryFinance.API.Infrastructure.Utils
+﻿namespace AIWorkshop.MVC.Infrastructure.Utils
 {
     public static class OpenAIModels
     {

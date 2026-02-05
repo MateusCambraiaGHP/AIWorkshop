@@ -1,4 +1,4 @@
-﻿namespace BlueBerryFinance.API.Infrastructure.Utils.Enums
+﻿namespace AIWorkshop.MVC.Infrastructure.Utils.Enums
 {
     public enum AIProvider
     {

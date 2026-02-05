@@ -1,9 +1,9 @@
-﻿using BlueBerryFinance.API.Infrastructure.Utils.Enums;
+﻿using AIWorkshop.MVC.Infrastructure.Utils.Enums;
 using System.ComponentModel.DataAnnotations;
 
-namespace BlueBerryFinance.API.Application.Requests
+namespace AIWorkshop.MVC.Application.Requests
 {
-    public class FinancialAnalysisRequest
+    public class PromptAnalysisRequest
     {
         public string Prompt { get; init; } = string.Empty;
         public AIProvider Provider { get; init; } = AIProvider.OpenAI;

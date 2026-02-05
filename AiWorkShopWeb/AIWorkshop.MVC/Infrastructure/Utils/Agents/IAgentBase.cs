@@ -1,7 +1,7 @@
-﻿using BlueBerryFinance.API.Infrastructure.Utils.Enums;
+﻿using AIWorkshop.MVC.Infrastructure.Utils.Enums;
 using Microsoft.Agents.AI;
 
-namespace BlueBerryFinance.API.Infrastructure.Utils.Agents
+namespace AIWorkshop.MVC.Infrastructure.Utils.Agents
 {
     public interface IAgentBase<T>
     {

@@ -1,0 +1,84 @@
+﻿@inject IUserService UserService
+@inject ISnackbar Snackbar
+
+@if (_isLoading)
+{
+  <MudOverlay Visible="true" DarkBackground="true" ZIndex="9999">
+    <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="true" />
+  </MudOverlay>
+}
+
+<MudDialog>
+  <TitleContent>
+    <MudText Typo="Typo.h5">
+      <MudIcon Icon="@Icons.Material.Filled.Login" Class="mr-2" />
+      Welcome to AI Workshop!
+    </MudText>
+  </TitleContent>
+  <DialogContent>
+    <MudText Class="mb-4">Enter your username to participate and compete for prizes!</MudText>
+    <MudTextField @bind-Value="_username"
+                  Immediate="true"
+                  Label="Username"
+                  Variant="Variant.Outlined"
+                  Required="true"
+                  RequiredError="Username is required"
+                  MaxLength="30"
+                  Disabled="_isLoading"
+                  Placeholder="Enter your username..."
+                  Adornment="Adornment.Start"
+                  AdornmentIcon="@Icons.Material.Filled.Person" />
+    <MudTextField @bind-Value="_email"
+                  Immediate="true"
+                  Label="Email (optional)"
+                  Variant="Variant.Outlined"
+                  Class="mt-3"
+                  Disabled="_isLoading"
+                  Placeholder="your@email.com"
+                  InputType="InputType.Email"
+                  Adornment="Adornment.Start"
+                  AdornmentIcon="@Icons.Material.Filled.Email" />
+  </DialogContent>
+  <DialogActions>
+    <MudButton Variant="Variant.Filled"
+               Color="Color.Primary"
+               OnClick="LoginAsync"
+               Disabled="@(!IsValid || _isLoading)">
+      Let's Go!
+    </MudButton>
+  </DialogActions>
+</MudDialog>
+
+@code {
+  [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+  private string _username = string.Empty;
+  private string? _email;
+  private bool _isLoading;
+
+  private bool IsValid => !string.IsNullOrWhiteSpace(_username) && _username.Length >= 3;
+
+  private async Task LoginAsync()
+  {
+    if (!IsValid || _isLoading) return;
+
+    _isLoading = true;
+    StateHasChanged();
+
+    try
+    {
+      var user = await UserService.LoginOrCreateAsync(_username.Trim(), _email?.Trim());
+      Snackbar.Add($"Welcome, {user.Username}! 🎉", Severity.Success);
+      MudDialog.Close(DialogResult.Ok(user));
+    }
+    catch (Exception ex)
+    {
+      Snackbar.Add($"Login failed: {ex.Message}", Severity.Error);
+    }
+    finally
+    {
+      _isLoading = false;
+      StateHasChanged();
+    }
+  }
+}

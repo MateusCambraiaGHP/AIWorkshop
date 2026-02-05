@@ -1,0 +1,376 @@
+@page "/prompt-analysis"
+@using AIWorkshop.MVC.Application.Handlers.Interfaces
+@using AIWorkshop.MVC.Application.Requests
+@using AIWorkshop.MVC.Application.Responses
+@using AIWorkshop.MVC.Application.Services.Interfaces
+@using AIWorkshop.MVC.Data.Entities
+@using System.Globalization
+@layout MainLayout
+@inject IPromptAnalysisHandler PromptHandler
+@inject IUserService UserService
+@inject IDialogService DialogService
+
+
+<PageTitle>Prompt Analysis</PageTitle>
+
+@if (_isLoading)
+{
+  <MudOverlay Visible="true" DarkBackground="true" ZIndex="9999">
+    <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="true" />
+  </MudOverlay>
+}
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+  @if (_currentUser is not null)
+  {
+    <MudAlert Severity="Severity.Info" Class="mb-4" Variant="Variant.Outlined" Dense="true">
+      <div class="d-flex align-center justify-space-between">
+        <MudText>
+          👋 Welcome, <strong>@_currentUser.Username</strong>
+          @if (_hasBeenSent)
+          {
+            <span> — You already submitted your prompt!</span>
+          }
+        </MudText>
+      </div>
+    </MudAlert>
+  }
+
+  <MudText Typo="Typo.h4" Class="mb-4">Prompt Analysis (TCREI)</MudText>
+
+  <MudPaper Class="pa-4 mb-4">
+    <MudTextField @bind-Value="_prompt"
+                  Immediate="true"
+                  Label="Enter your prompt"
+                  Variant="Variant.Outlined"
+                  Lines="5"
+                  FullWidth="true"
+                  Disabled="_isLoading"
+                  Placeholder="Type or paste your prompt here..."
+                  HelperText="@(_hasBeenSent ? "Prompt submitted ✓" : $"Minimum 10 characters required ({_prompt.Length}/10)")"
+                  ReadOnly="_hasBeenSent" />
+
+    @if (!_hasBeenSent)
+    {
+      <div class="d-flex gap-2 mt-3">
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="AnalyzePromptAsync"
+                   Disabled="@(_isLoading || _prompt.Length < 10)">
+          Analyze Prompt
+        </MudButton>
+
+        <MudButton Variant="Variant.Outlined"
+                   Color="Color.Secondary"
+                   OnClick="ClearForm"
+                   Disabled="_isLoading"
+                   Style="@(_prompt.Length == 0 ? "visibility:hidden" : "")">
+          <MudIcon Icon="@Icons.Material.Filled.Clear" Class="mr-1" />
+          Clear
+        </MudButton>
+      </div>
+    }
+  </MudPaper>
+
+  @if (_hasBeenSent && (_existingScore is not null || _response is not null))
+  {
+    <MudGrid>
+      <!-- Score Card -->
+      <MudItem xs="12" md="4">
+        <MudPaper Class="pa-4 text-center" Style="height: 100%;">
+          <MudText Typo="Typo.h6">Your Score</MudText>
+          <MudText Typo="Typo.h2" Color="@GetScoreColor(CurrentScore)">
+            @CurrentScore / 25
+          </MudText>
+          <MudChip T="string" Color="@GetRatingColor(CurrentRating)" Class="mt-2">
+            @CurrentRating
+          </MudChip>
+          @if (_existingScore is not null)
+          {
+            <MudText Typo="Typo.caption" Class="mt-2">
+              Submitted: @_existingScore.CreatedAt.ToString("g")
+            </MudText>
+          }
+        </MudPaper>
+      </MudItem>
+
+      <!-- Component Scores Chart -->
+      <MudItem xs="12" md="8">
+        <MudPaper Class="pa-4">
+          <MudText Typo="Typo.h6" Class="mb-3">TCREI Component Scores</MudText>
+          @if (_chartSeries.Count > 0 && _chartSeries[0].Data.Any(d => d > 0))
+          {
+            <MudChart ChartType="ChartType.Bar"
+                      ChartSeries="@_chartSeries"
+                      XAxisLabels="@_chartLabels"
+                      Width="100%"
+                      Height="250px"
+                      ChartOptions="_chartOptions" />
+          }
+          else
+          {
+            <MudText Color="Color.Secondary">Score breakdown not available.</MudText>
+          }
+        </MudPaper>
+      </MudItem>
+
+      <!-- Recommendations -->
+      <MudItem xs="12" md="6">
+        <MudPaper Class="pa-4">
+          <MudText Typo="Typo.h6" Class="mb-3">
+            <MudIcon Icon="@Icons.Material.Filled.Lightbulb" Class="mr-2" />
+            Recommendations
+          </MudText>
+          @if (CurrentRecommendations.Count > 0)
+          {
+            <MudList T="string">
+              @foreach (var recommendation in CurrentRecommendations)
+              {
+                <MudListItem Icon="@Icons.Material.Filled.CheckCircle" IconColor="Color.Success">
+                  @recommendation
+                </MudListItem>
+              }
+            </MudList>
+          }
+          else
+          {
+            <MudText Color="Color.Secondary">No recommendations available.</MudText>
+          }
+        </MudPaper>
+      </MudItem>
+
+      <!-- Improved Prompt -->
+      <MudItem xs="12" md="6">
+        <MudPaper Class="pa-4">
+          <MudText Typo="Typo.h6" Class="mb-3">
+            <MudIcon Icon="@Icons.Material.Filled.AutoAwesome" Class="mr-2" />
+            Improved Prompt
+          </MudText>
+          @if (!string.IsNullOrEmpty(CurrentImprovedPrompt))
+          {
+            <MudTextField Value="@CurrentImprovedPrompt"
+                          ReadOnly="true"
+                          Variant="Variant.Outlined"
+                          Lines="6"
+                          FullWidth="true" />
+            <MudButton Variant="Variant.Text"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.ContentCopy"
+                       Class="mt-2"
+                       OnClick="CopyImprovedPrompt">
+              Copy to Clipboard
+            </MudButton>
+          }
+          else
+          {
+            <MudText Color="Color.Secondary">No improved prompt available.</MudText>
+          }
+        </MudPaper>
+      </MudItem>
+    </MudGrid>
+  }
+</MudContainer>
+
+@code {
+  private string _prompt = string.Empty;
+  private bool _isLoading;
+  private bool _hasBeenSent;
+  private PromptAnalysisResponse? _response;
+  private User? _currentUser;
+  private PromptScore? _existingScore;
+
+  private List<ChartSeries> _chartSeries = [];
+  private string[] _chartLabels = ["Task", "Context", "References", "Evaluate", "Iterate"];
+  private ChartOptions _chartOptions = new() { YAxisTicks = 1, MaxNumYAxisTicks = 5 };
+
+  private int CurrentScore => _response?.OverallScore ?? _existingScore?.Score ?? 0;
+  private string CurrentRating => _response?.Rating ?? _existingScore?.Rating ?? string.Empty;
+  private string CurrentImprovedPrompt => _response?.ImprovedPrompt ?? _existingScore?.ImprovedPrompt ?? string.Empty;
+  private List<string> CurrentRecommendations => _response?.Recommendations ??
+      (_existingScore?.Recommendations?.Split("|||", StringSplitOptions.RemoveEmptyEntries).ToList() ?? []);
+
+  [Inject] private IJSRuntime JS { get; set; } = default!;
+  [Inject] private ISnackbar Snackbar { get; set; } = default!;
+
+  protected override async Task OnAfterRenderAsync(bool firstRender)
+  {
+    if (firstRender)
+    {
+      await CheckAndPromptLoginAsync();
+    }
+  }
+
+  private async Task CheckAndPromptLoginAsync()
+  {
+    _currentUser = await UserService.GetCurrentUserAsync();
+
+    if (_currentUser is null)
+    {
+      await ShowLoginDialogAsync();
+    }
+
+    if (_currentUser is not null)
+    {
+      _existingScore = await UserService.GetUserScoreAsync(_currentUser.Id);
+      if (_existingScore is not null)
+      {
+        _prompt = _existingScore.Prompt;
+        _hasBeenSent = true;
+
+        if (!string.IsNullOrEmpty(_existingScore.ComponentScores))
+        {
+          ParseComponentScores(_existingScore.ComponentScores);
+        }
+      }
+    }
+
+    await InvokeAsync(StateHasChanged);
+  }
+
+  private async Task ShowLoginDialogAsync()
+  {
+    var options = new DialogOptions
+    {
+      CloseOnEscapeKey = false,
+      CloseButton = false,
+      MaxWidth = MaxWidth.Small,
+      FullWidth = true
+    };
+
+    var dialog = await DialogService.ShowAsync<LoginDialog>("", options);
+    var result = await dialog.Result;
+
+    if (result is not null && !result.Canceled && result.Data is User user)
+    {
+      _currentUser = user;
+    }
+  }
+
+  private async Task AnalyzePromptAsync()
+  {
+    if (_currentUser is null)
+    {
+      await ShowLoginDialogAsync();
+      if (_currentUser is null) return;
+    }
+
+    if (_prompt.Length < 10)
+    {
+      Snackbar.Add("Please enter at least 10 characters.", Severity.Warning);
+      return;
+    }
+
+    _isLoading = true;
+    _chartSeries = [];
+    await InvokeAsync(StateHasChanged);
+
+    try
+    {
+      var request = new PromptAnalysisRequest { Prompt = _prompt };
+      _response = await PromptHandler.HandleAsync(request);
+
+      if (_response is not null)
+      {
+        ParseComponentScores(_response.ComponentScores);
+
+        // Save score to database with all details
+        await UserService.SaveScoreAsync(
+          _currentUser.Id,
+          _prompt,
+          _response.OverallScore,
+          _response.Rating,
+          _response.ComponentScores,
+          _response.Recommendations,
+          _response.ImprovedPrompt);
+
+        _hasBeenSent = true;
+        Snackbar.Add($"Score saved! You got {_response.OverallScore}/25 🎯", Severity.Success);
+      }
+    }
+    catch (Exception ex)
+    {
+      Snackbar.Add($"Error analyzing prompt: {ex.Message}", Severity.Error);
+      _response = null;
+    }
+    finally
+    {
+      _isLoading = false;
+      await InvokeAsync(StateHasChanged);
+    }
+  }
+
+  private void ClearForm()
+  {
+    _prompt = string.Empty;
+    _response = null;
+    _chartSeries = [];
+  }
+
+  private void ParseComponentScores(string componentScores)
+  {
+    var scores = new double[5];
+
+    if (string.IsNullOrWhiteSpace(componentScores))
+    {
+      _chartSeries = [new ChartSeries { Name = "Score", Data = scores }];
+      return;
+    }
+
+    var separator = componentScores.Contains('|') ? '|' : ',';
+    var parts = componentScores.Split(separator, StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+
+    foreach (var part in parts)
+    {
+      var keyValue = part.Split(':', StringSplitOptions.TrimEntries);
+      if (keyValue.Length != 2) continue;
+
+      var key = keyValue[0].ToLowerInvariant();
+      var valuePart = keyValue[1].Split('/')[0].Trim();
+
+      if (double.TryParse(valuePart, NumberStyles.Any, CultureInfo.InvariantCulture, out var score))
+      {
+        var index = key switch
+        {
+          var k when k.Contains('t') => 0,
+          var k when k.Contains('c') => 1,
+          var k when k.Contains('r') => 2,
+          var k when k.Contains('e') => 3,
+          var k when k.Contains('i') => 4,
+          _ => -1
+        };
+
+        if (index >= 0)
+        {
+          scores[index] = score;
+        }
+      }
+    }
+
+    _chartSeries = [new ChartSeries { Name = "Score", Data = scores }];
+  }
+
+  private Color GetScoreColor(int score) => score switch
+  {
+    >= 23 => Color.Success,
+    >= 20 => Color.Info,
+    >= 17 => Color.Warning,
+    _ => Color.Error
+  };
+
+  private Color GetRatingColor(string rating) => rating switch
+  {
+    "Excellent" => Color.Success,
+    "Very Good" => Color.Info,
+    "Good" => Color.Warning,
+    _ => Color.Error
+  };
+
+  private async Task CopyImprovedPrompt()
+  {
+    if (!string.IsNullOrEmpty(CurrentImprovedPrompt))
+    {
+      await JS.InvokeVoidAsync("navigator.clipboard.writeText", CurrentImprovedPrompt);
+      Snackbar.Add("Copied to clipboard!", Severity.Success);
+    }
+  }
+}

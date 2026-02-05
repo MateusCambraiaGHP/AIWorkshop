@@ -1,6 +1,6 @@
-﻿using BlueBerryFinance.API.Infrastructure.Utils.Enums;
+﻿using AIWorkshop.MVC.Infrastructure.Utils.Enums;
 
-namespace BlueBerryFinance.API.Infrastructure.Utils.Models
+namespace AIWorkshop.MVC.Infrastructure.Utils.Models
 {
     public class AIAgentOptions
     {

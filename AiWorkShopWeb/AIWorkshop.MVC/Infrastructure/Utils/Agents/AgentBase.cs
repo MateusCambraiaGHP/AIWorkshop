@@ -1,10 +1,10 @@
-﻿using BlueBerryFinance.API.Infrastructure.Utils.Enums;
-using BlueBerryFinance.API.Infrastructure.Utils.Factories.Interfaces;
+﻿using AIWorkshop.MVC.Infrastructure.Utils.Enums;
+using AIWorkshop.MVC.Infrastructure.Utils.Factories.Interfaces;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
 using System.Text.Json;
 
-namespace BlueBerryFinance.API.Infrastructure.Utils.Agents;
+namespace AIWorkshop.MVC.Infrastructure.Utils.Agents;
 
 public abstract class AgentBase<T> : IAgentBase<T> where T : class, new()
 {

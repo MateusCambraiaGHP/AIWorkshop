@@ -1,20 +1,51 @@
-﻿using BlueBerryFinance.API.Infrastructure.Utils.Helpers.Interfaces;
+﻿using AIWorkshop.MVC.Infrastructure.Utils.Helpers.Interfaces;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 
-namespace BlueBerryFinance.API.Infrastructure.Utils.Helpers
+namespace AIWorkshop.MVC.Infrastructure.Utils.Helpers
 {
     public class PromptLoader : IPromptLoader
     {
+
+        private const string RootNamespace = "AIWorkshop.MVC";
+
         public string Load(string resourceName)
         {
             var assembly = Assembly.GetExecutingAssembly();
-            var fullResourceName = $"BlueBerryFinance.API.{resourceName.Replace("/", ".").Replace("\\", ".")}";
+            var fullResourceName = $"AIWorkshop.MVC.{resourceName.Replace("/", ".").Replace("\\", ".")}";
 
             using var stream = assembly.GetManifestResourceStream(fullResourceName)
                 ?? throw new InvalidOperationException($"Prompt resource '{fullResourceName}' not found.");
 
             using var reader = new StreamReader(stream);
             return reader.ReadToEnd();
+        }
+
+        public string LoadRelative(string fileName, [CallerFilePath] string callerFilePath = "")
+        {
+            var callerDir = Path.GetDirectoryName(callerFilePath) ?? string.Empty;
+            var promptPath = Path.Combine(callerDir, "Prompts", fileName);
+
+            var projectRoot = GetProjectRoot(callerFilePath);
+            var relativePath = Path.GetRelativePath(projectRoot, promptPath);
+            var resourceName = $"{RootNamespace}.{relativePath.Replace(Path.DirectorySeparatorChar, '.').Replace(Path.AltDirectorySeparatorChar, '.')}";
+
+            var assembly = Assembly.GetExecutingAssembly();
+            using var stream = assembly.GetManifestResourceStream(resourceName)
+                ?? throw new InvalidOperationException($"Prompt resource '{resourceName}' not found.");
+
+            using var reader = new StreamReader(stream);
+            return reader.ReadToEnd();
+        }
+
+        private static string GetProjectRoot(string filePath)
+        {
+            var dir = new DirectoryInfo(Path.GetDirectoryName(filePath)!);
+            while (dir is not null && !dir.GetFiles("*.csproj").Any())
+            {
+                dir = dir.Parent;
+            }
+            return dir?.FullName ?? throw new InvalidOperationException("Could not find project root.");
         }
     }
 }

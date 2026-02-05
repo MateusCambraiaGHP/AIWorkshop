@@ -1,8 +1,8 @@
-﻿using BlueBerryFinance.API.Infrastructure.Utils.Enums;
+﻿using AIWorkshop.MVC.Infrastructure.Utils.Enums;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
 
-namespace BlueBerryFinance.API.Infrastructure.Utils.Factories.Interfaces
+namespace AIWorkshop.MVC.Infrastructure.Utils.Factories.Interfaces
 {
     public interface IAIAgentFactory
     {

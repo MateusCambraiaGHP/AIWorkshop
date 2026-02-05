@@ -1,4 +1,4 @@
-﻿namespace BlueBerryFinance.API.Application.Handlers.Interfaces
+﻿namespace AIWorkshop.MVC.Application.Handlers.Interfaces
 {
     public interface IRequestHandler<TRequest, TResponse>
     {

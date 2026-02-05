@@ -1,5 +1,6 @@
 <Solution>
-  <Project Path="BlueBerryFinance.API/BlueBerryFinance.API.csproj" />
-  <Project Path="BlueBerryFinance.Common/BlueBerryFinance.Common.csproj" />
-  <Project Path="BlueberryFinance.Web/BlueberryFinance.Web.csproj" Id="ba6117cb-ff9c-42e3-b4e3-d2d5abb18850" />
+  <Folder Name="/Solution Items/" />
+  <Project Path="AIWorkshop.API/AIWorkshop.API.csproj" />
+  <Project Path="AIWorkshop.Common/AIWorkshop.Common.csproj" />
+  <Project Path="AIWorkshop.MVC/AIWorkshop.MVC.csproj" />
 </Solution>

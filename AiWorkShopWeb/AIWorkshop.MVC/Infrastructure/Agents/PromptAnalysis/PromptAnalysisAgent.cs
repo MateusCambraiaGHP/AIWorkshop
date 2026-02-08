@@ -10,6 +10,6 @@ namespace AIWorkshop.MVC.Infrastructure.Agents.PromptAnalysis
         public PromptAnalysisAgent(
             IAIAgentFactory agentFactory,
             IPromptLoader promptLoader)
-            : base(agentFactory, promptLoader.Load("PromptAnalysis.md")) { }
+            : base(agentFactory, promptLoader.Load("PromptAnalysis", "PromptAnalysis.md")) { }
     }
 }

@@ -4,6 +4,6 @@ namespace AIWorkshop.MVC.Infrastructure.Agents.Utils.Helpers
 {
     public interface IPromptLoader
     {
-        string Load(string fileName, [CallerFilePath] string callerFilePath = "");
+        string Load(string agentFolder, string fileName);
     }
 }

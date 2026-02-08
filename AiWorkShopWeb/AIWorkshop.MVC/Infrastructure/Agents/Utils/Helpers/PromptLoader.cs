@@ -6,32 +6,30 @@ namespace AIWorkshop.MVC.Infrastructure.Agents.Utils.Helpers
     public class PromptLoader : IPromptLoader
     {
         private const string RootNamespace = "AIWorkshop.MVC";
+        private readonly Assembly _assembly;
 
-        public string Load(string fileName, [CallerFilePath] string callerFilePath = "")
+        public PromptLoader()
         {
-            var callerDir = Path.GetDirectoryName(callerFilePath) ?? string.Empty;
-            var promptPath = Path.Combine(callerDir, "Prompts", fileName);
+            _assembly = Assembly.GetExecutingAssembly();
+        }
 
-            var projectRoot = GetProjectRoot(callerFilePath);
-            var relativePath = Path.GetRelativePath(projectRoot, promptPath);
-            var resourceName = $"{RootNamespace}.{relativePath.Replace(Path.DirectorySeparatorChar, '.').Replace(Path.AltDirectorySeparatorChar, '.')}";
+        public string Load(string agentFolder, string fileName)
+        {
+            // Build resource name: AIWorkshop.MVC.Infrastructure.Agents.{AgentFolder}.Prompts.{FileName}
+            var resourceName = $"{RootNamespace}.Infrastructure.Agents.{agentFolder}.Prompts.{fileName}";
 
-            var assembly = Assembly.GetExecutingAssembly();
-            using var stream = assembly.GetManifestResourceStream(resourceName)
-                ?? throw new InvalidOperationException($"Prompt resource '{resourceName}' not found.");
+            using var stream = _assembly.GetManifestResourceStream(resourceName);
+
+            if (stream is null)
+            {
+                // List available resources for debugging
+                var available = string.Join(", ", _assembly.GetManifestResourceNames());
+                throw new InvalidOperationException(
+                    $"Prompt resource '{resourceName}' not found. Available resources: {available}");
+            }
 
             using var reader = new StreamReader(stream);
             return reader.ReadToEnd();
-        }
-
-        private static string GetProjectRoot(string filePath)
-        {
-            var dir = new DirectoryInfo(Path.GetDirectoryName(filePath)!);
-            while (dir is not null && !dir.GetFiles("*.csproj").Any())
-            {
-                dir = dir.Parent;
-            }
-            return dir?.FullName ?? throw new InvalidOperationException("Could not find project root.");
         }
     }
 }
